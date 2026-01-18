@@ -1,0 +1,167 @@
+#!/sbin/sh
+
+#################
+# Initialization
+#################
+
+umask 022
+
+# echo before loading util_functions
+ui_print() { echo "$1"; }
+
+OUTFD=$2
+ZIPFILE=$3
+
+mount /data 2>/dev/null
+
+#########################
+# Check for Magisk/KernelSU
+#########################
+
+MAGISK_PATH="/data/adb/magisk"
+KSU_PATH="/data/adb/ksu"
+MAGISK_UTIL="$MAGISK_PATH/util_functions.sh"
+KSU_UTIL="$KSU_PATH/util_functions.sh"
+
+# Detect which root solution is installed
+if [ -f "$MAGISK_UTIL" ]; then
+  ROOT_SOLUTION="magisk"
+  UTIL_FUNCTIONS="$MAGISK_UTIL"
+elif [ -f "$KSU_UTIL" ]; then
+  ROOT_SOLUTION="ksu"
+  UTIL_FUNCTIONS="$KSU_UTIL"
+else
+  ui_print "*******************************"
+  ui_print " ERROR: No root solution found!"
+  ui_print " Please install Magisk v20.4+"
+  ui_print " or KernelSU!"
+  ui_print "*******************************"
+  exit 1
+fi
+
+ui_print "*******************************"
+if [ "$ROOT_SOLUTION" = "ksu" ]; then
+  ui_print " Detected: KernelSU"
+else
+  ui_print " Detected: ${ROOT_SOLUTION^^}"
+fi
+ui_print "*******************************"
+
+#########################
+# Load util_functions.sh
+#########################
+
+. "$UTIL_FUNCTIONS"
+
+# Check version for Magisk
+if [ "$ROOT_SOLUTION" = "magisk" ]; then
+  if [ -z "$MAGISK_VER_CODE" ] || [ "$MAGISK_VER_CODE" -lt 20400 ]; then
+    ui_print "*******************************"
+    ui_print " Please install Magisk v20.4+! "
+    ui_print "*******************************"
+    exit 1
+  fi
+fi
+
+#########################
+# Check Dependencies
+#########################
+
+check_dependency() {
+  local cmd=$1
+  local name=$2
+  
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    ui_print "[E] Missing dependency: $name ($cmd)"
+    return 1
+  fi
+  return 0
+}
+
+ui_print ""
+ui_print "[P] Checking dependencies..."
+MISSING_DEPS=0
+
+check_dependency "unzip" "unzip" || MISSING_DEPS=1
+check_dependency "curl" "curl" || MISSING_DEPS=1
+check_dependency "grep" "grep" || MISSING_DEPS=1
+check_dependency "sed" "sed" || MISSING_DEPS=1
+check_dependency "cut" "cut" || MISSING_DEPS=1
+check_dependency "find" "find" || MISSING_DEPS=1
+check_dependency "mknod" "mknod" || MISSING_DEPS=1
+
+if [ "$MISSING_DEPS" -eq 1 ]; then
+  ui_print "[E] Missing required dependencies!"
+  ui_print "[E] Installation cannot continue."
+  exit 1
+fi
+
+ui_print "[I] All dependencies found!"
+
+#########################
+# User Confirmation
+#########################
+
+ui_print ""
+ui_print "*******************************"
+ui_print " microG with Play Store"
+ui_print "*******************************"
+ui_print ""
+ui_print "This module will:"
+ui_print "- Replace Google Services with microG"
+ui_print "- Replace Google Services Framework with microG GSF Proxy"
+ui_print "- Install microG Services and Companion"
+ui_print ""
+ui_print "[?] Continue with installation?"
+ui_print "[?] (Vol+ = Yes, Vol- = No)"
+
+# Simple keycheck function for confirmation
+chooseport() {
+  # Set temp directory if not already set
+  [ -z "$TMPDIR" ] && TMPDIR="/dev/tmp"
+  mkdir -p "$TMPDIR" 2>/dev/null
+  
+  # Try to extract and use keycheck binary from zip if available
+  if [ -n "$ZIPFILE" ] && [ -f "$ZIPFILE" ]; then
+    unzip -q -o "$ZIPFILE" "keycheck" -d "$TMPDIR" 2>/dev/null
+    if [ -f "$TMPDIR/keycheck" ]; then
+      chmod 755 "$TMPDIR/keycheck"
+      "$TMPDIR/keycheck" > /dev/null 2>&1
+      "$TMPDIR/keycheck"
+      SEL=$?
+      if [ "$SEL" -eq 42 ]; then
+        return 0
+      elif [ "$SEL" -eq 41 ]; then
+        return 1
+      fi
+    fi
+  fi
+
+  # Fallback to getevent
+  EVENTS_FILE="$TMPDIR/events"
+  while true; do
+    /system/bin/getevent -lqc 1 2>/dev/null | /system/bin/grep KEY_VOLUME > "$EVENTS_FILE" 2>/dev/null
+    if [ -f "$EVENTS_FILE" ] && /system/bin/grep -q KEY_VOLUMEUP "$EVENTS_FILE" 2>/dev/null; then
+      return 0
+    elif [ -f "$EVENTS_FILE" ] && /system/bin/grep -q KEY_VOLUMEDOWN "$EVENTS_FILE" 2>/dev/null; then
+      return 1
+    fi
+  done
+}
+
+if ! chooseport; then
+  ui_print ""
+  ui_print "[-] Installation cancelled by user."
+  exit 1
+fi
+
+ui_print ""
+ui_print "[I] Installation confirmed. Proceeding..."
+ui_print ""
+
+#########################
+# Install Module
+#########################
+
+install_module
+exit 0

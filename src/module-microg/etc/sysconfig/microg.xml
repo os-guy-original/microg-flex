@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- These are configurations that must exist on all GMS devices. -->
+<config>
+    <!-- GmsCore must always have network access for GCM and other things. -->
+    <allow-in-power-save package="com.google.android.gms" />
+    <allow-in-power-save package="com.google.android.gsf" />
+    <allow-in-power-save package="com.android.vending" />
+    <allow-in-data-usage-save package="com.google.android.gms" />
+    <allow-in-data-usage-save package="com.google.android.gsf" />
+    <allow-in-data-usage-save package="com.android.vending" />
+    <allow-unthrottled-location package="com.google.android.gms" />
+    <allow-ignore-location-settings package="com.google.android.gms" attributionTag="com.google.android.gms.thunderbird" />
+
+     <!-- Apps below are required on all GMS devices -->
+    <app-link package="com.android.vending" />
+    <app-link package="com.google.android.gms" />
+    <app-link package="com.google.android.gsf" />
+
+    <!-- Whitelist of what components are permitted as backup data transports.
+        The 'service' attribute here is a flattened ComponentName string. -->
+    <backup-transport-whitelisted-service
+        service="com.google.android.gms/.backup.BackupTransportService" />
+    <backup-transport-whitelisted-service
+        service="com.google.android.gms/.backup.component.D2dTransportService" />
+
+     <!-- Specify the explicit set of other applications whose app data directories are
+        accessible by other applications. -->
+    <app-data-isolation-whitelisted-app package="com.google.android.gms" />
+</config>
