@@ -27,6 +27,8 @@ microG Flex is a modular installer that replaces Google Services with microG on 
 - **Flexible Store Selection**: Choose between Play Store or Companion during installation
 - **microG Services**: Replaces Google Services with microG GmsCore
 - **GSF Proxy**: Replaces Google Services Framework with microG GsfProxy
+- **Aurora Services**: Optional add-on for Aurora Store background installations.
+  - *Note: Added even though it's deprecated. It's FOSS, you can do whatever you want.*
 - **Works on Stock ROMs**: Designed for stock Android; replaces existing Google apps without manual removal
 
 ## Installation Tutorial
@@ -48,6 +50,9 @@ microG Flex is a modular installer that replaces Google Services with microG on 
      - Press **Volume Down** for microG Companion (privacy-focused alternative)
    - **APK Download** (if needed): Press **Volume Up** to download missing files automatically
      - *Note: Requires an active internet connection*
+   - **Aurora Services Selection** (if Aurora Store is chosen):
+     - Press **Volume Up** to install Aurora Services (enables background app updates)
+     - Press **Volume Down** to skip
 
 4. **Reboot**: Restart your device.
 
@@ -94,6 +99,7 @@ microG Flex is a modular installer that replaces Google Services with microG on 
      - `com.google.android.gsf.apk` (required)
      - *Either* `PlayStore.apk` *or* `com.android.vending-companion.apk`
      - *Optional:* `AuroraStore.apk` (if using Companion variant)
+     - *Optional:* `AuroraServices.apk` (helper for Aurora Store)
    - If APKs are missing, they'll be downloaded during installation on your phone
 
 4. **Build**:

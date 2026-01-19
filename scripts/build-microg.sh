@@ -99,6 +99,11 @@ else
 		echo "[I] Aurora Store: PRESENT"
 		has_aurora=1
 	fi
+
+	# Check for Aurora Services
+	if ls "$apk_dir/AuroraServices"* 1> /dev/null 2>&1; then
+		echo "[I] Aurora Services: PRESENT"
+	fi
 	
 	if [ "$has_playstore" -eq 0 ] && [ "$has_companion" -eq 0 ]; then
 		echo "[W] No store APK found (Play Store or Companion)"
@@ -115,15 +120,18 @@ gms_dir="$destination_dir/priv-app/GmsCore$suffix"
 phonesky_dir="$destination_dir/priv-app/Phonesky$suffix"
 gsf_dir="$destination_dir/priv-app/com.google.android.gsf$suffix"
 aurora_dir="$destination_dir/app/AuroraStore"
+aurora_services_dir="$destination_dir/priv-app/AuroraServices"
 mkdir -p "$module_dir/$gms_dir"
 mkdir -p "$module_dir/$phonesky_dir"
 mkdir -p "$module_dir/$gsf_dir"
 mkdir -p "$module_dir/$aurora_dir"
+mkdir -p "$module_dir/$aurora_services_dir"
 
 gms_path="$gms_dir/GmsCore$suffix.apk"
 phonesky_path="$phonesky_dir/Phonesky$suffix.apk"
 gsf_path="$gsf_dir/com.google.android.gsf$suffix.apk"
 aurora_path="$aurora_dir/AuroraStore.apk"
+aurora_services_path="$aurora_services_dir/AuroraServices.apk"
 
 if [ "$apk_count" -ge 3 ]; then
 	echo "[P] Copying APKs to module directory..."
@@ -162,6 +170,12 @@ if [ "$apk_count" -ge 3 ]; then
 		echo "[I] Copied Aurora Store APK"
 	fi
 
+	# Copy Aurora Services if present
+	if ls "$apk_dir/AuroraServices"* 1> /dev/null 2>&1; then
+		cp "$apk_dir"/AuroraServices* "$module_dir/$aurora_services_path"
+		echo "[I] Copied Aurora Services APK"
+	fi
+
 	echo "[P] Extracting libraries..."
 	# GmsCore libraries (always extract)
 	unzip -q -o "$module_dir/$gms_path" 'lib/*' -d "$module_dir/$gms_dir" 2>/dev/null
@@ -184,6 +198,7 @@ cp -r "$src_dir/$module_dir"/* "$module_dir/"
 mv "$module_dir/etc" "$module_dir/$destination_dir/"
 
 echo "[P] Patching customize script..."
+sed -i "1i aurora_services_path=$aurora_services_path" "$module_dir/customize.sh"
 sed -i "1i aurora_path=$aurora_path" "$module_dir/customize.sh"
 sed -i "1i phonesky_path=$phonesky_path" "$module_dir/customize.sh"
 sed -i "1i gms_path=$gms_path" "$module_dir/customize.sh"

@@ -77,8 +77,35 @@ else
 		ui_print ""
 		ui_print "[I] ✓ Aurora Store will be installed"
 		ui_print ""
+		
+		# Ask about Aurora Services if Aurora Store is chosen
+		ui_print "================================================"
+		ui_print "[?] Install Aurora Services?"
+		ui_print "================================================"
+		ui_print ""
+		ui_print "Aurora Services allows Aurora Store to install apps"
+		ui_print "in the background without root prompts."
+		ui_print ""
+		ui_print "[!] Note: Added Aurora Services even though it's"
+		ui_print "    deprecated. It's FOSS, do whatever you want."
+		ui_print ""
+		ui_print "[?] Install Aurora Services? (Vol+ = Yes, Vol- = No)"
+		ui_print "================================================"
+		
+		if chooseport; then
+			INSTALL_AURORA_SERVICES="yes"
+			ui_print ""
+			ui_print "[I] ✓ Aurora Services will be installed"
+			ui_print ""
+		else
+			INSTALL_AURORA_SERVICES="no"
+			ui_print ""
+			ui_print "[I] Skipping Aurora Services"
+			ui_print ""
+		fi
 	else
 		INSTALL_AURORA="no"
+		INSTALL_AURORA_SERVICES="no"
 		ui_print ""
 		ui_print "[I] ✓ Companion only (no Aurora Store)"
 		ui_print ""
@@ -276,6 +303,44 @@ check_and_download_apks() {
 					INSTALL_AURORA="no"
 				fi
 			fi
+			
+			# Download Aurora Services if requested
+			if [ "$INSTALL_AURORA_SERVICES" = "yes" ]; then
+				ui_print "[I] Downloading Aurora Services..."
+				ui_print "    (Grabbing from GitLab)"
+				
+				# Fetch GitLab releases page to get latest APK link
+				ui_print "[I] Checking GitLab for latest version..."
+
+				# GitLab API to find the latest release
+				aurora_services_json=$(fetch_url_content "https://gitlab.com/api/v4/projects/AuroraOSS%2FAuroraServices/releases/permalink/latest")
+				# Extract the relative path (e.g., /uploads/xym.../AuroraServices.apk)
+				# GitLab puts these in the description as markdown links: [name](/uploads/path.apk)
+				aurora_services_rel_path=$(echo "$aurora_services_json" | grep -o '/uploads/[^()"]*\.apk' | head -n 1)
+
+				if [ -n "$aurora_services_rel_path" ]; then
+					aurora_services_url="https://gitlab.com/AuroraOSS/AuroraServices$aurora_services_rel_path"
+					ui_print "[I] Found latest release: $aurora_services_url"
+					
+					if download_file "$aurora_services_url" "$MODPATH/$aurora_services_path" "Aurora Services" "false"; then
+						ui_print "[I] Aurora Services is ready!"
+					else
+						ui_print "[W] Couldn't grab Aurora Services. Skipping it."
+						INSTALL_AURORA_SERVICES="no"
+					fi
+				else
+					ui_print "[W] Failed to parse Aurora Services URL from GitLab."
+					# Fallback to known stable version if dynamic fetch fails
+					aurora_services_fallback="https://gitlab.com/AuroraOSS/AuroraServices/uploads/049e356247c45831518fc718228562d4/AuroraServices_v1.1.1.apk"
+					ui_print "[I] Trying fallback version v1.1.1..."
+					if download_file "$aurora_services_fallback" "$MODPATH/$aurora_services_path" "Aurora Services (Fallback)" "false"; then
+						ui_print "[I] Aurora Services is ready!"
+					else
+						ui_print "[W] Couldn't grab Aurora Services. Skipping it."
+						INSTALL_AURORA_SERVICES="no"
+					fi
+				fi
+			fi
 
 			if [ ! -f "$MODPATH/$gms_path" ] || [ ! -f "$MODPATH/$phonesky_path" ] || [ ! -f "$MODPATH/$gsf_path" ]; then
 				ui_print "[E] Downloads failed to save to disk."
@@ -316,6 +381,10 @@ fi
 set_apk_permissions "$gsf_path" "Services Framework Proxy"
 
 [ "$INSTALL_AURORA" = "yes" ] && set_apk_permissions "$aurora_path" "Aurora Store"
+
+if [ "$INSTALL_AURORA_SERVICES" = "yes" ]; then
+	set_apk_permissions "$aurora_services_path" "Aurora Services"
+fi
 
 # Set permissions on entire system directory tree
 ui_print "[P] Setting system directory permissions..."
@@ -414,6 +483,14 @@ if [ -f "$MODPATH/$gms_path" ] && [ -f "$MODPATH/$phonesky_path" ] && [ -f "$MOD
 				ui_print "[I] - Aurora Store: Installed"
 			else
 				ui_print "[W] - Aurora Store: Download failed"
+			fi
+		fi
+		
+		if [ "$INSTALL_AURORA_SERVICES" = "yes" ]; then
+			if [ -f "$MODPATH/$aurora_services_path" ]; then
+				ui_print "[I] - Aurora Services: Installed"
+			else
+				ui_print "[W] - Aurora Services: Download failed"
 			fi
 		fi
 	fi

@@ -27,6 +27,39 @@ github_latest_release() {
     echo "$url"
 }
 
+# Helper to check file size and download
+check_and_download() {
+    local url=$1
+    local path=$2
+    local name=$3
+    
+    if [ -z "$url" ]; then
+        echo "[E] Missing URL for $name"
+        return 1
+    fi
+
+    # Get remote size if possible
+    # We follow redirects (-L) and fetch only headers (-I)
+    local remote_size
+    remote_size=$(curl -sL -I "$url" | grep -i "^Content-Length" | tail -n 1 | awk '{print $2}' | tr -d '\r\n')
+    
+    if [ -f "$path" ] && [ -n "$remote_size" ]; then
+        local local_size
+        local_size=$(stat -c %s "$path" 2>/dev/null || wc -c < "$path" | awk '{print $1}')
+        
+        if [ "$local_size" != "$remote_size" ]; then
+            echo "[W] Local $name size ($local_size) differs from remote version ($remote_size)!"
+            echo "[W] Updating existing file..."
+        else
+            echo "[I] Local $name is up to date ($local_size bytes). Skipping download."
+            return 0
+        fi
+    fi
+
+    echo "[I] Downloading $name..."
+    curl -L "$url" -o "$path"
+}
+
 echo "microG Flex APK Fetcher"
 echo "======================="
 echo ""
@@ -39,32 +72,17 @@ echo ""
 
 echo "[P] Fetching latest microG GmsCore..."
 GMS_URL=$(github_latest_release "microg/GmsCore" "com.google.android.gms")
-if [ -n "$GMS_URL" ]; then
-    echo "[I] Downloading GmsCore from $GMS_URL"
-    curl -L "$GMS_URL" -o "$APK_DIR/com.google.android.gms.apk"
-else
-    echo "[E] Failed to find GmsCore download URL"
-fi
+check_and_download "$GMS_URL" "$APK_DIR/com.google.android.gms.apk" "GmsCore"
 
 echo ""
 echo "[P] Fetching latest microG GsfProxy..."
 GSF_URL=$(github_latest_release "microg/GsfProxy" "GsfProxy")
-if [ -n "$GSF_URL" ]; then
-    echo "[I] Downloading GsfProxy from $GSF_URL"
-    curl -L "$GSF_URL" -o "$APK_DIR/com.google.android.gsf.apk"
-else
-    echo "[E] Failed to find GsfProxy download URL"
-fi
+check_and_download "$GSF_URL" "$APK_DIR/com.google.android.gsf.apk" "GsfProxy"
 
 echo ""
 echo "[P] Fetching microG Companion (FakeStore)..."
 COMPANION_URL=$(github_latest_release "microg/GmsCore" "com.android.vending")
-if [ -n "$COMPANION_URL" ]; then
-    echo "[I] Downloading Companion from $COMPANION_URL"
-    curl -L "$COMPANION_URL" -o "$APK_DIR/com.android.vending-companion.apk"
-else
-    echo "[E] Failed to find Companion download URL"
-fi
+check_and_download "$COMPANION_URL" "$APK_DIR/com.android.vending-companion.apk" "Companion"
 
 echo ""
 echo "[P] Fetching Google Play Store ZIP..."
@@ -92,11 +110,35 @@ AURORA_PAGE=$(curl -s -L "https://f-droid.org/en/packages/com.aurora.store/")
 AURORA_URL=$(echo "$AURORA_PAGE" | grep -o 'https://f-droid.org/repo/com.aurora.store_[0-9]*\.apk' | head -n 1)
 
 if [ -n "$AURORA_URL" ]; then
-    echo "[I] Downloading Aurora Store from $AURORA_URL"
-    curl -L "$AURORA_URL" -o "$APK_DIR/AuroraStore.apk"
+    check_and_download "$AURORA_URL" "$APK_DIR/AuroraStore.apk" "Aurora Store"
 else
     echo "[E] Failed to find Aurora Store URL on F-Droid!"
 fi
+
+echo ""
+echo "[P] Fetching Aurora Services (from GitLab)..."
+# GitLab API to find the latest release
+# The APK is usually linked in the description, not in assets
+# We fetch the latest release JSON and parse the first /uploads/ link ending in .apk
+AURORA_SERVICES_JSON=$(curl -sL "https://gitlab.com/api/v4/projects/AuroraOSS%2FAuroraServices/releases/permalink/latest")
+# Extract the relative path (e.g., /uploads/xym.../AuroraServices.apk)
+# GitLab puts these in the description as markdown links: [name](/uploads/path.apk)
+AURORA_SERVICES_PATH=$(echo "$AURORA_SERVICES_JSON" | grep -o '/uploads/[^()"]*\.apk' | head -n 1)
+
+if [ -n "$AURORA_SERVICES_PATH" ]; then
+    AURORA_SERVICES_URL="https://gitlab.com/AuroraOSS/AuroraServices${AURORA_SERVICES_PATH}"
+    check_and_download "$AURORA_SERVICES_URL" "$APK_DIR/AuroraServices.apk" "Aurora Services"
+else
+    echo "[E] Failed to parse Aurora Services URL from GitLab API!"
+    # Try a desperate backup regex just in case
+    AURORA_SERVICES_PATH=$(echo "$AURORA_SERVICES_JSON" | sed 's/\\//g' | grep -o '/uploads/[^"()]*\.apk' | head -n 1)
+    if [ -n "$AURORA_SERVICES_PATH" ]; then
+        AURORA_SERVICES_URL="https://gitlab.com/AuroraOSS/AuroraServices${AURORA_SERVICES_PATH}"
+        check_and_download "$AURORA_SERVICES_URL" "$APK_DIR/AuroraServices.apk" "Aurora Services (Backup Regex)" "false"
+    fi
+fi
+
+# End of Aurora Services block
 
 echo ""
 echo "=========================================="

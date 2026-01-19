@@ -236,3 +236,21 @@ grant_playstore_permissions() {
 	local permissions="ACCESS_COARSE_LOCATION ACCESS_FINE_LOCATION POST_NOTIFICATIONS READ_PHONE_STATE GET_ACCOUNTS"
 	grant_pkg_permissions "com.android.vending" $permissions
 }
+
+grant_aurora_services_permissions() {
+	local permissions="READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE POST_NOTIFICATIONS"
+	grant_pkg_permissions "com.aurora.services" $permissions
+	# Also grant MANAGE_EXTERNAL_STORAGE via appops if supported
+	if command -v appops >/dev/null 2>&1; then
+		appops set com.aurora.services MANAGE_EXTERNAL_STORAGE allow 2>/dev/null || true
+	fi
+}
+
+grant_aurora_store_permissions() {
+	local permissions="READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE ACCESS_COARSE_LOCATION ACCESS_FINE_LOCATION POST_NOTIFICATIONS"
+	grant_pkg_permissions "com.aurora.store" $permissions
+	# Also grant MANAGE_EXTERNAL_STORAGE via appops if supported
+	if command -v appops >/dev/null 2>&1; then
+		appops set com.aurora.store MANAGE_EXTERNAL_STORAGE allow 2>/dev/null || true
+	fi
+}
