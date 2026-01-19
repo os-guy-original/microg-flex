@@ -5,3 +5,4 @@ versionCode=100
 author=os-guy-original
 description=Flexible microG installer - choose Play Store or Companion during install (Magisk/KernelSU)
 updateJson=https://raw.githubusercontent.com/os-guy-original/microg-flex/refs/heads/master/update-microg.json
+banner=banner.png

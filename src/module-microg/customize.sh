@@ -43,7 +43,7 @@ ui_print ""
 ui_print "  [2] microG Companion / FakeStore (Vol-)"
 ui_print "      - Open source dummy store"
 ui_print "      - Minimal, privacy-focused"
-ui_print "      - You can choose Aurora Store on t
+ui_print "      - You can choose Aurora Store later"
 ui_print ""
 ui_print "================================================"
 ui_print "[?] Vol+ for Play Store, Vol- for Companion"
